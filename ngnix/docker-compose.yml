@@ -1,0 +1,18 @@
+name: ngnix
+services:
+  proxy:
+    image: nginx:stable
+    container_name: proxy
+    ports:
+      - 80:80
+    volumes:
+      - ./proxy-config:/etc/nginx
+    networks:
+      - tibia_stalker
+    
+networks:
+  tibia_stalker:
+    external: true
+   # driver: bridge
+# First you have to create network or comment "external" section and uncomment "driver" section
+# docker network create tibia_stalker

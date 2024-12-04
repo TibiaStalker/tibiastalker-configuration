@@ -1,0 +1,71 @@
+﻿# 1. Update docker image for every entry or use label:latest -> "ghcr.io/tibiastalker/tibia-stalker-api:latest"
+# 2. Use backup script for azure or simple
+# 3. Adjust lines with time schedule and uncomment
+# 4. In TibiaDataApi section put your proxy credentials or remove section -e HTTPS_PROXY=http://xxx:yyy@111.222.333.333:0000/ if you do not need additional proxy
+# 5. Adjust *Subscriber sections depend how many of them you need
+#
+# URGENT: Do not forget to leave last empty line
+#
+#
+#
+######################################################################## ~~~[Tibia Stalker]~~~ ###############################################################################
+#10 4 * * * cd ~/scripts && ./psql_backup_azure_storage.sh
+#10 4 * * * cd ~/scripts && ./psql_backup.sh
+###
+###
+###
+###                                                                     ~~[run WorldScanSeeder]~~
+#*/5 * * * * /usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_world-scan-seeder --rm -d --memory 200m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet WorldScanSeeder.dll
+###
+###
+###
+###                                                                     ~~[run WorldScanAnalyser]~~
+#5 5 * * * /usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_world-scan-analyser --rm -d --memory 200m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet WorldScanAnalyser.dll
+###
+###
+###
+###!!!!!!!!                                                         ~~[run WorldScanAnalyserSubscriber]~~ ONCE!!!
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_world-scan-analyser-subscriber1 -d --memory --restart always 500m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet WorldScanAnalyserSubscriber.dll
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_world-scan-analyser-subscriber2 -d --memory --restart always 500m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet WorldScanAnalyserSubscriber.dll
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_world-scan-analyser-subscriber3 -d --memory --restart always 500m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet WorldScanAnalyserSubscriber.dll
+###
+#0 4 * * 1 /usr/bin/docker stop ts_world-scan-analyser-subscriber1 ; /usr/bin/docker stop ts_world-scan-analyser-subscriber2 ; /usr/bin/docker stop ts_world-scan-analyser-subscriber3
+#0 5 * * 7 /usr/bin/docker start ts_world-scan-analyser-subscriber1 ; /usr/bin/docker start ts_world-scan-analyser-subscriber2 ; /usr/bin/docker start ts_world-scan-analyser-subscriber3
+###
+###
+###
+###                                                                      ~~[run DbTableCleaner]~~
+#0 4 * * * /usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_db-cleaner --rm -d --memory 500m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet DbCleaner.dll
+###
+###
+###
+###                                                                        ~~[run WorldSeeder]~~
+#0 3 * * * /usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_world-seeder --rm -d --memory 200m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet WorldSeeder.dll
+###
+###
+###
+###!!!!!!!!                                                                 ~~[run API]~~ ONCE!!!
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_api -d --memory 200m --restart always ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet TibiaStalker.Api.dll
+###
+###
+###
+###!!!!!!!!                                                             ~~[run TibiaDataApi]~~ ONCE!!!
+#/usr/bin/docker run -e HTTPS_PROXY=http://xxx:yyy@111.222.333.333:0000/ --network tibia_stalker --name tibia-data-api -d --memory 200m --restart always ghcr.io/tibiadata/tibiadata-api-go:3.7.5
+#/usr/bin/docker run -e HTTPS_PROXY=http://xxx:yyy@111.222.333.444:1111/ --network tibia_stalker --name tibia-data-api1 -d --memory 200m --restart always ghcr.io/tibiadata/tibiadata-api-go:3.7.5
+#/usr/bin/docker run -e HTTPS_PROXY=http://xxx:yyy@111.222.333.555:2222/ --network tibia_stalker --name tibia-data-api2 -d --memory 200m --restart always ghcr.io/tibiadata/tibiadata-api-go:3.7.5
+#/usr/bin/docker run -e HTTPS_PROXY=http://xxx:yyy@111.222.333.666:3333/ --network tibia_stalker --name tibia-data-api3 -d --memory 200m --restart always ghcr.io/tibiadata/tibiadata-api-go:3.7.5
+###
+###
+###
+###!!!!!!!!                                                      ~~[run ChangeNameDetectorSubscriber]~~ ONCE!!!
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env -e TibiaData__BaseAddress=http://tibia-data-api1:8080 --network tibia_stalker --name ts_change-name-detector-subscriber1 -d --memory 300m --restart always ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet ChangeNameDetectorSubscriber.dll
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env -e TibiaData__BaseAddress=http://tibia-data-api2:8080 --network tibia_stalker --name ts_change-name-detector-subscriber2 -d --memory 300m --restart always ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet ChangeNameDetectorSubscriber.dll
+#/usr/bin/docker run --env-file /root/tibia_stalker/.env -e TibiaData__BaseAddress=http://tibia-data-api3:8080 --network tibia_stalker --name ts_change-name-detector-subscriber3 -d --memory 300m --restart always ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet ChangeNameDetectorSubscriber.dll
+###
+#0 4 * * 2-7 /usr/bin/docker stop ts_change-name-detector-subscriber1 ; /usr/bin/docker stop ts_change-name-detector-subscriber2 ; /usr/bin/docker stop ts_change-name-detector-subscriber3
+#0 5 * * 1-6 /usr/bin/docker start ts_change-name-detector-subscriber1 ; /usr/bin/docker start ts_change-name-detector-subscriber2 ; /usr/bin/docker start ts_change-name-detector-subscriber3
+###
+###
+###
+###                                                                      ~~[run ChangeNameDetector]~~
+#5 5 * * * /usr/bin/docker run --env-file /root/tibia_stalker/.env --network tibia_stalker --name ts_change-name-detector --rm -d --memory 300m ghcr.io/tibiastalker/tibia-stalker-api:1.4.0 dotnet ChangeNameDetector.dll
